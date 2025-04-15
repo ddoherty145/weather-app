@@ -4,11 +4,35 @@ import { useState } from 'react';
 function Weather() {
     const [zipCode, setZipCode] = useState('');
     const [units, setUnits] = useState('imperial');
+    const [weatherData, setWeatherData] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const API_KEY = '03de325d485e014f0dcffbc4d03e0e00';
+
+    const fetchWeather = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?zip=${zipCode},us&units=${units}&appid=${API_KEY}`);
+            const data = await response.json();
+
+            if (data.cod !== 200) {
+                throw new Error(data.message || 'Failed to fetch weather data');
+            }
+            setWeatherData(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+     };
+
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // Add API call logic later
-        console.log(`Fetching weather for ${zipCode} in ${units} units`);
+        fetchWeather();
     };
 
     return (
@@ -22,7 +46,7 @@ function Weather() {
                         type="text"
                         id="zipCode"
                         name="zipCode"
-                        placeholder="Enter a %-digit zip code"
+                        placeholder="Enter a 5-digit zip code"
                         pattern="[0-9]{5}"
                         value={zipCode}
                         onChange={(e) => setZipCode(e.target.value)}
@@ -59,6 +83,20 @@ function Weather() {
               <button type="submit">Get Weather</button>
             </form>
 
+            {/* Display basic weather informatioin */}
+            {weatherData && (
+                <div className="weather-info">
+                    <h2>{weatherData.name}</h2>
+                    <p>Temperature: {weatherData.main.temp}°{units === 'imperial' ? 'F' : 'C'}</p>
+                    <p>Feels like: {weatherData.main.feels_like}°{units === 'imperial' ? 'F' : 'C'}</p>
+                    <p>Weather: {weatherData.weather[0].main} - {weatherData.weather[0].description}</p>
+                </div>
+            )}
+
+            {loading && <p>Loading Weather Data...</p>}
+            {error && <p className="error">{error}</p>}
+
+            {/* Display additional weather information */}
             {zipCode && <p>Current Zip Code: {zipCode}</p>}
         </div>
     );
