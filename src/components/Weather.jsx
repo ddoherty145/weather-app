@@ -1,6 +1,7 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DisplayWeather from './DisplayWeather';
+import './Weather.css';
 
 function Weather() {
     const [zipCode, setZipCode] = useState('');
@@ -8,11 +9,20 @@ function Weather() {
     const [weatherData, setWeatherData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [appState, setAppState] = useState('initial');
 
     const API_KEY = '03de325d485e014f0dcffbc4d03e0e00';
 
+    useEffect(() => {
+        const savedZipCode = localStorage.getItem('lastZipCode');
+        if (savedZipCode) {
+            setZipCode(savedZipCode);
+        }
+    }, []);
+
     const fetchWeather = async () => {
         setLoading(true);
+        setAppState('loading');
         setError(null);
 
         try {
@@ -23,9 +33,16 @@ function Weather() {
                 throw new Error(data.message || 'Failed to fetch weather data');
             }
             setWeatherData(data);
-        } catch (err) {
+            setAppState('success');
+
+            localStorage.setItem('lastZipCode', zipCode);
+        }
+        catch (err) {
             setError(err.message);
-        } finally {
+            setAppState('error');
+            console.error('Error fetching weather data:', err);
+        }
+        finally {
             setLoading(false);
         }
      };
@@ -36,8 +53,34 @@ function Weather() {
         fetchWeather();
     };
 
+    // Function to determine the background color based on weather condition
+    const getBackgroundClass = () => {
+        if (!weatherData) return '';
+
+        const condition = weatherData.weather[0].main.toLowerCase();
+        const temp = weatherData.main.temp;
+        const isDay = weatherData.weather[0].icon.includes('d');
+
+        if (condition.includes('rain') || condition.includes('drizzle')) {
+            return 'bg-rain';
+        } else if (condition.includes('cloud')) {
+            return 'bg-cloudy';
+        } else if (condition.includes('snow')) {
+            return 'bg-snow';
+        }
+        else if (condition.includes('clear') && isDay) {
+            return 'bg-clear-day';
+        } else if (condition.includes('clear') && !isDay) {
+            return 'bg-clear-night';
+        } else if (temp > 80) {
+            return 'bg-hot';
+        } else if (temp < 60) {
+            return 'bg-cold';
+        }
+    }
+
     return (
-        <div className="weather-container">
+        <div className={`weather-container ${weatherData ? getBackgroundClass() : ''}`}>
             <h1>Lester's Weather Room!</h1>
 
             <form onSubmit={handleSubmit}>
@@ -81,24 +124,32 @@ function Weather() {
                 </div>
               </div>
 
-              <button type="submit">Get Weather</button>
+              <button type="submit" disabled={loading}>{loading ? 'Loading...' : 'Get Weather'}</button>
             </form>
 
-            {/* Display basic weather informatioin */}
-            {weatherData && (
-                <div className="weather-info">
-                    <h2>{weatherData.name}</h2>
-                    <p>Temperature: {weatherData.main.temp}°{units === 'imperial' ? 'F' : 'C'}</p>
-                    <p>Feels like: {weatherData.main.feels_like}°{units === 'imperial' ? 'F' : 'C'}</p>
-                    <p>Weather: {weatherData.weather[0].main} - {weatherData.weather[0].description}</p>
-                </div>
-            )}
+            <div className="result-container">
+                {appState === 'initial' && (
+                    <div className="initial-state">
+                    <p>Enter a zip code to get started!</p>
+                    </div>
+                )}
+                {appState === 'loading' && (
+                    <div className="loading-state">
+                        <p>Loading weather data...</p>
+                        <div className="loader"></div>
+                    </div>
+                )}
+                {appState === 'error' && (
+                    <div className="error-state">
+                        <p>Error: {error}</p>
+                        <button onClick={fetchWeather}>Try Again</button>
+                    </div>
+                )}
 
-            {loading && <p>Loading Weather Data...</p>}
-            {error && <p className="error">Error: {error}</p>}
-            {!loading && !error && weatherData && (
-                <DisplayWeather weatherData={weatherData} units={units} />
-            )}
+                {appState === 'success' && weatherData && (
+                    <DisplayWeather weatherData={weatherData} units={units} />
+                )}
+            </div>
 
             {/* Add a button to toggle between Fahrenheit and Celsius */}
             <button onClick={() => setUnits(units === 'imperial' ? 'metric' : 'imperial')}>
