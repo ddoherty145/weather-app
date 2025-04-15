@@ -1,5 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
+import DisplayWeather from './DisplayWeather';
 
 function Weather() {
     const [zipCode, setZipCode] = useState('');
@@ -94,7 +95,15 @@ function Weather() {
             )}
 
             {loading && <p>Loading Weather Data...</p>}
-            {error && <p className="error">{error}</p>}
+            {error && <p className="error">Error: {error}</p>}
+            {!loading && !error && weatherData && (
+                <DisplayWeather weatherData={weatherData} units={units} />
+            )}
+
+            {/* Add a button to toggle between Fahrenheit and Celsius */}
+            <button onClick={() => setUnits(units === 'imperial' ? 'metric' : 'imperial')}>
+                Toggle to {units === 'imperial' ? 'Celsius (°C)' : 'Fahrenheit (°F)'}
+            </button>
 
             {/* Display additional weather information */}
             {zipCode && <p>Current Zip Code: {zipCode}</p>}
